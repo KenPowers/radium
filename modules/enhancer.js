@@ -1,15 +1,11 @@
 /* @flow */
 
 var resolveStyles = require('./resolve-styles.js');
+var printStyles = require('./print-styles.js');
 
 var enhanceWithRadium = function (ComposedComponent: constructor): constructor {
-  var displayName =
-    ComposedComponent.displayName ||
-    ComposedComponent.name ||
-    'Component';
-
   class RadiumEnhancer extends ComposedComponent {
-    _radiumMediaQueryListenersByQuery: Object<string, {remove: () => void}>;
+    _radiumMediaQueryListenersByQuery: {[query: string]: {remove: () => void}};
     _radiumMouseUpListener: {remove: () => void};
 
     constructor () {
@@ -17,6 +13,10 @@ var enhanceWithRadium = function (ComposedComponent: constructor): constructor {
 
       this.state = this.state || {};
       this.state._radiumStyleState = {};
+
+      if (RadiumEnhancer.printStyleClass) {
+        this.printStyleClass = RadiumEnhancer.printStyleClass;
+      }
     }
 
     render () {
@@ -66,12 +66,18 @@ var enhanceWithRadium = function (ComposedComponent: constructor): constructor {
     // prototype methods on the Radium enhanced prototype as discussed in #219.
     Object.keys(ComposedComponent.prototype).forEach(key => {
       if (!RadiumEnhancer.prototype.hasOwnProperty(key)) {
-        RadiumEnhancer.prototype[key] = ComposedComponent.prototype[key];
+        var descriptor = Object.getOwnPropertyDescriptor(ComposedComponent.prototype, key);
+        Object.defineProperty(RadiumEnhancer.prototype, key, descriptor);
       }
     });
   }
 
-  RadiumEnhancer.displayName = `Radium(${displayName})`;
+  RadiumEnhancer.displayName =
+    ComposedComponent.displayName ||
+    ComposedComponent.name ||
+    'Component';
+
+  RadiumEnhancer.printStyleClass = printStyles.addPrintStyles(RadiumEnhancer);
 
   return RadiumEnhancer;
 };
